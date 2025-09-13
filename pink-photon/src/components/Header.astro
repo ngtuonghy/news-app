@@ -1,0 +1,85 @@
+---
+import NewsCategories from "@/features/news-categories/components/NewsCategories.astro";
+import astroLogo from "../assets/astro.svg";
+import SearchForm from "@/features/search/components/SearchForm.astro";
+const user = Astro.locals.user;
+console.log(user);
+---
+
+<div>
+  <div class="flex justify-between pt-2">
+    <div class="flex items-center space-x-4 flex-1">
+      <a href="/"
+        ><img
+          src={astroLogo.src}
+          width="115"
+          height="48"
+          alt="Astro Homepage"
+        /></a
+      >
+    </div>
+    {user ? ( 
+    <div class="flex items-center gap-2">
+      <a href="/m" class={user.role === 'reporter' ? 'block' : 'hidden'}>
+      <button type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center me-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+
+        <svg class="w-3.5 h-3.5 me-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bolt-icon lucide-bolt"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><circle cx="12" cy="12" r="4"/></svg>
+
+
+Quản lý tin
+</button>
+      </a>
+    <button id="dropdownInformationButton" data-dropdown-toggle="dropdownInformation" class="" type="button">
+      {     user.avatarUrl ? (
+          <img class="w-10 h-10 rounded-full" src={user.avatarUrl} alt="Rounded avatar">
+      ) :( <div class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
+    <span class="font-medium text-gray-600 dark:text-gray-300">JL</span>
+
+      </div>
+)}
+</button>
+
+<div id="dropdownInformation" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg  w-44 dark:bg-gray-700 dark:divide-gray-600 shadow-[0px_4px_16px_rgba(17,17,26,0.1),_0px_8px_24px_rgba(17,17,26,0.1),_0px_16px_56px_rgba(17,17,26,0.1)]">
+    <div class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+        <div>{user.fullName}</div>
+        <div class="font-medium truncate">{user.email}</div>
+    </div>
+
+    <!-- <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownInformationButton"> -->
+      <!-- <li> -->
+      <!--   <a href="#" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a> -->
+      <!-- </li> -->
+      <!-- <li> -->
+      <!--   <a href="#" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Settings</a> -->
+      <!-- </li> -->
+      <!-- <li> -->
+      <!--   <a href="#" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Earnings</a> -->
+      <!-- </li> -->
+    <!-- </ul> -->
+      <div class="py-2">
+        <form method="post" action="/api/v1/auth/logout">
+    <button
+      type="submit"
+      class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100
+             dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white text-left"
+    >
+      Đăng xuất
+    </button>
+  </form>
+</div>
+    </div>
+
+   
+</div> 
+    ) : (
+    <a href="/login">
+      <button type="button" class="text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-blue-500 dark:text-blue-500 dark:hover:text-white dark:hover:bg-blue-500 dark:focus:ring-blue-800">Đăng nhập</button> 
+    </a>
+)}
+  </div>
+  <div class="flex justify-between items-center py-2">
+    <NewsCategories />
+    <SearchForm />
+  </div>
+  <hr class="border-gray-300" />
+</div>

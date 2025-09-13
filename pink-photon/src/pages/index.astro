@@ -1,0 +1,21 @@
+---
+import { ArticleService } from "../features/articles/services/ArticleService.ts";
+import ArticleList from "../features/articles/components/ArticleList.astro";
+import Layout from "../layouts/Layout.astro";
+
+const service = new ArticleService();
+
+const [articles, topCategoryArticles, newArticles] = await Promise.all([
+  service.getLatestArticles(10),
+  service.getArticlesTopCategoriesWithArticles(4, 4),
+  service.getNewArticle(10),
+]);
+---
+
+<Layout>
+  <ArticleList
+    articles={articles}
+    topCategoryArticles={topCategoryArticles}
+    newArticles={newArticles}
+  />
+</Layout>

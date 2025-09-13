@@ -1,0 +1,130 @@
+---
+import { CategoryService } from "../services/CategoryService.ts";
+const service = new CategoryService();
+const categories = await service.getCategories();
+const currentSlug = Astro.url.pathname.split("/")[1];
+const visibleCategories = categories.slice(0, 8);
+---
+
+<nav
+  class="space-x-3 items-center hidden lg:flex"
+  aria-label="Chuyên mục tin tức"
+>
+  <h2 class="hidden">Chuyên mục tin tức</h2>
+
+  <a
+    href="/"
+    class={`whitespace-nowrap ${
+      currentSlug === ""
+        ? "text-blue-600 font-bold"
+        : "text-gray-700 hover:text-blue-500"
+    }`}
+  >
+    Trang chủ
+  </a>
+
+  {
+    visibleCategories.map((cat) => {
+      const isActive = currentSlug === cat.slug;
+      return (
+        <a
+          href={`/${cat.slug}`}
+          class={`whitespace-nowrap ${
+            isActive
+              ? "text-blue-600 font-bold"
+              : "text-gray-700 hover:text-blue-500"
+          }`}
+        >
+          {cat.name}
+        </a>
+      );
+    })
+  }
+  {
+    categories.length > 0 && (
+      <div id="dropdownContainer" class="">
+        <button
+          id="dropdownButton"
+          data-dropdown-toggle="dropdown"
+          class="text-gray-700 hover:text-blue-500 font-medium rounded-lg text-md py-2.5 text-center inline-flex items-center dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-700"
+          type="button"
+        >
+          Thêm
+          <svg
+            id="dropdownIcon"
+            class="w-4 h-4 ms-1 transition-transform duration-200"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        <div
+          id="catgory-modal"
+          class="absolute left-0 mt-2 z-20 w-full bg-white rounded-lg shadow-[0_3px_10px_rgb(0,0,0,0.2)] dark:bg-gray-700 hidden"
+        >
+          <ul class="flex flex-wrap py-2 text-sm text-gray-700 dark:text-gray-200 gap-0.5">
+            {categories.map((cat) => (
+              <li class="min-w-[140px] mt-2">
+                <a
+                  href={`/${cat.slug}`}
+                  class="block text-black px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                >
+                  {cat.name}
+                </a>
+
+                {cat.children && cat.children.length > 0 && (
+                  <ul class="pl-4 mt-1">
+                    {cat.children.map((child) => (
+                      <li class="mt-1">
+                        <a
+                          href={`/${child.slug}`}
+                          class="text-sm text-gray-600 hover:text-blue-500"
+                        >
+                          {child.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    )
+  }
+</nav>
+
+<script>
+  const container = document.getElementById("dropdownContainer");
+  const modal = document.getElementById("catgory-modal");
+  const icon = document.getElementById("dropdownIcon");
+
+  if (container && modal && icon) {
+    let hideTimeout: ReturnType<typeof setTimeout>;
+
+    container.addEventListener("mouseenter", () => {
+      clearTimeout(hideTimeout);
+      modal.classList.remove("hidden");
+      icon.classList.add("rotate-180");
+    });
+
+    container.addEventListener("mouseleave", () => {
+      hideTimeout = setTimeout(() => {
+        modal.classList.add("hidden");
+        icon.classList.remove("rotate-180");
+      }, 100);
+    });
+  } else {
+    console.error("Container or modal element not found");
+  }
+</script>

@@ -1,0 +1,35 @@
+---
+
+export const prerender = false;
+
+import { CategoryService } from "../../features/news-categories/services/CategoryService";
+import Layout from "../../layouts/Layout.astro";
+import { flattenCategories } from "../../features/utils/CategoryUtils.ts";
+import { ArticleService } from "../../features/articles/services/ArticleService";
+import ArticleList from "../../features/articles/components/ArticleList.astro";
+
+export async function getStaticPaths() {
+  const service = new CategoryService();
+  const categories = await service.getCategories();
+  const allCategories = flattenCategories(categories);
+
+  return allCategories.map((cat) => ({
+    params: { category: cat.slug },
+    props: { title: cat.name },
+  }));
+}
+
+const articleService = new ArticleService();
+const { category } = Astro.params;
+const { title } = Astro.props;
+
+const [articles, newArticles] = await Promise.all([
+  articleService.getArticlesByCategorySlug(category, 10),
+  articleService.getNewArticle(10),
+]);
+// console.log(articles);
+---
+
+<Layout>
+  <ArticleList articles={articles} newArticles={newArticles} />
+</Layout>

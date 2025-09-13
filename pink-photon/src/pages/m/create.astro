@@ -1,0 +1,8 @@
+---
+import { ArticleManagementService } from "@/features/article-management/services/ArticleManagementService";
+const service = new ArticleManagementService()
+const userId = Astro.locals.user?.id;
+if (!userId) return Astro.redirect("/login");
+const tempId = await service.createDraft(userId);
+return Astro.redirect(`/m/${tempId}/edit`);
+---

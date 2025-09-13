@@ -1,0 +1,61 @@
+---
+import { ArticleService } from "@/features/articles/services/ArticleService";
+import Layout from "@/layouts/Layout.astro";
+import { generateHTML } from "@tiptap/html";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+
+
+const pages = [
+  {
+    slug: undefined,
+    title: "Astro Store",
+    text: "Welcome to the Astro store!",
+  },
+  {
+    slug: "login",
+    title: "The ultimate Astro handbook",
+    text: "If you want to learn Astro, you must read this book.",
+  },
+];
+const { slug: slugWithId } = Astro.params;
+
+console.log("slugWithId:", slugWithId);
+
+// const page = pages.find((page) => page.slug === slugWithId);
+
+// if (!page) return Astro.redirect("/404");
+if (!slugWithId) throw new Error("Article ID is missing");
+
+const segments = slugWithId.split("-");
+const lastSegment = segments[segments.length - 1];
+
+if (!lastSegment) return Astro.redirect("/404")
+
+
+const articleService = new ArticleService();
+const [article /* newArticles */] = await Promise.all([
+  articleService.getArticleById(lastSegment),
+  // articleService.getNewArticle(10),
+]);
+if (!article || !article.content) return Astro.redirect("/404");
+
+const html = generateHTML(article.content, [StarterKit, Image]);
+
+---
+
+<Layout>
+  <!-- <div class="mb-3"> -->
+    <!-- <h2 class="text-4xl mb-2 font-normal ">{article?.title}</h2> -->
+    <!-- <p>{article?.shortDescription}</p> -->
+  <!-- </div> -->
+
+  <div class="flex">
+    <div class="flex-1 mr-4 flex items-center justify-center">
+     
+      <article class="prose format format-img:aspect-video format-img:object-cover" set:html={html}></article>
+
+    </div>
+    <!-- <div class="pl-4 py-2 border-l border-gray-300 w-80 lg:block hidden"></div> -->
+  </div>
+</Layout>

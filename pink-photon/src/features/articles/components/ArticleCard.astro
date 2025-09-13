@@ -1,0 +1,57 @@
+---
+import { timeFormat } from "@/lib/timeFormat";
+import { slugify } from "../../../utils/slugify";
+import type { Article } from "../domain/Article";
+import Image from "@/components/ui/Image.astro";
+
+interface Props extends Article {
+  horizontal?: boolean;
+}
+
+const {
+  title,
+  shortDescription,
+  categories,
+  author,
+  id,
+  publishedAt,
+  thumbnailUrl,
+  horizontal = false,
+}: Props = Astro.props as Props;
+---
+
+<a
+  href={`/${categories.map(slugify).join("/")}/${slugify(title)}-${id}`}
+  class={`rounded-lg mb-4 overflow-hidden ${
+    horizontal ? "flex gap-4 items-start" : ""
+  }`}
+>
+  <div
+    class={`${
+      horizontal
+        ? "md:w-1/3 w-36 flex-shrink-0 aspect-video"
+        : "w-full aspect-video mb-2"
+    } rounded-lg bg-gray-200 overflow-hidden`}
+  >
+    <Image
+      className="w-full h-full object-cover"
+      src={thumbnailUrl}
+      alt={title}
+    />
+    <!-- <img -->
+    <!--   class="w-full h-full object-cover" -->
+    <!--   src={thumbnailUrl} -->
+    <!--   alt={title} -->
+    <!-- /> -->
+  </div>
+
+  <div class={horizontal ? "flex-1" : ""}>
+    <h2 class="md:text-xl text-md font-bold text-gray-900 dark:text-white">
+      {title}
+    </h2>
+    <p class="text-sm md:block hidden">{shortDescription}</p>
+    <small class="text-xs text-gray-500 md:block hidden">
+      {timeFormat(publishedAt)} - {author}
+    </small>
+  </div>
+</a>

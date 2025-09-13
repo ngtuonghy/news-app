@@ -1,0 +1,41 @@
+---
+import EditorPage from "@/features/article-management/components/EditorPage.svelte";
+import { ArticleManagementService } from "@/features/article-management/services/ArticleManagementService";
+import type { Category } from "@/features/news-categories/domain/Category";
+import { CategoryService } from "@/features/news-categories/services/CategoryService";
+import ReporterLayout from "@/layouts/ReporterLayout.astro";
+const user = Astro.locals.user;
+const { id } = Astro.params;
+if (!user || !id) {
+  return new Response("Not authorized", { status: 403 });
+}
+const service = new ArticleManagementService();
+const categoryService = new CategoryService();
+
+const article = await service.getArticleByUserId(id, user.id);
+
+function flattenCategories(
+  categories: Category[],
+  parentId?: number | null,
+): Category[] {
+  return categories.flatMap((cat) => {
+    const { children, ...rest } = cat;
+    const current: Category = { ...rest, parentId, children: undefined }; 
+    const flattenedChildren = children
+      ? flattenCategories(children, cat.id)
+      : [];
+    return [current, ...flattenedChildren];
+  });
+}
+const categoriesTree = await categoryService.getCategories();
+const categories = flattenCategories(categoriesTree);
+
+console.log(article)
+if (!article) {
+  return new Response("Not found or not authorized", { status: 404 });
+}
+---
+
+<ReporterLayout>
+  <EditorPage client:load {user} {article} {categories} />
+</ReporterLayout>
