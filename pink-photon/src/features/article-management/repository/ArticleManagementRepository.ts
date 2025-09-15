@@ -7,7 +7,7 @@ export class ArticleManagementRepository {
 		limit = 10,
 		offset = 0,
 		category?: string,
-	): Promise<ArticleRow[]> {
+	): Promise<ArticleRow[]> { 
 		const { rows } = await pool.query(
 			`SELECT 
         a.id,
@@ -19,13 +19,15 @@ export class ArticleManagementRepository {
         a.created_at,
         a.thumbnail_url,
         c.name AS category_name,
-      ARRAY_REMOVE(ARRAY[p.name, c.name], NULL) AS categories 
+        COALESCE(JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      JSON_BUILD_OBJECT ('id', c.id,'name', c.name) AS category
       FROM articles a
       JOIN users u ON a.author_id = u.id
+      LEFT JOIN article_tags at ON a.id = at.article_id
       LEFT JOIN categories c ON a.category_id = c.id
-      LEFT JOIN categories p ON c.parent_id = p.id
+      LEFT JOIN tags t ON at.tag_id = t.id
       WHERE ($2::text IS NULL OR c.slug = $2) AND  a.author_id = $1
-      GROUP BY u.username, c.id, p.id, a.id
+      GROUP BY u.username, c.id, a.id
       ORDER BY a.created_at DESC NULLS LAST, a.id DESC
       LIMIT $3 OFFSET $4`,
 			[userId, category ?? null, limit, offset],

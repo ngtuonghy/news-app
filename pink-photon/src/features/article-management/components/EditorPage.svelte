@@ -13,16 +13,19 @@
   import ComboBox from "./ComboBox.svelte";
   import type { Category } from "@/features/news-categories/domain/Category";
   import { Datepicker } from 'flowbite';
-    import dayjs from "dayjs";
+  import dayjs from "dayjs";
+  import EditorInsertTool from "./InsertToolEditor.svelte";
+    import { uploadEditorImages } from "../services/ArticleUpLoadImage";
 
-  let editor: Editor;
+  let editor: Editor ;
 
   interface Props {
     user: User;
     article: Article;
     categories: Category[];
+    id: string
   }
-  let { user, article, categories }: Props = $props();
+  let { user, article, categories,id }: Props = $props();
     
   let articleTags: {
   id?: number;
@@ -102,7 +105,20 @@
           })
         },
       }),
-        Image,
+        Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      _file: {
+        default: null,
+        parseHTML: () => null,
+        renderHTML: () => ({}),
+      },
+    };
+  },
+})
+        
+          
       ],
       content: article.content || "",
       onUpdate: updateActive,
@@ -156,8 +172,9 @@
   });
 
 
-  function saveContent() { 
-    const json = editor.getJSON() 
+  async function saveContent() { 
+    const json = await uploadEditorImages(editor.getJSON(),id);
+
     const articleData = {
       title,
       short_description:shortDescription,
@@ -166,10 +183,30 @@
       tags: articleTags,
       status,
       published_at: status === 'published' && article.status ==="draft" ? publishedAt : null,
-      thumbnail_url: file,
+      thumbnail_url: article.thumbnailUrl || null,
     };
-    console.log(articleData);
 
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file as Blob);
+        const response = await fetch(`/api/v1/articles/${id}/upload-image`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          throw new Error('Failed to upload image');
+        }
+        const data = await response.json();
+        articleData.thumbnail_url = data.data 
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert('Đã xảy ra lỗi khi tải lên ảnh đại diện.');
+        return;
+      }
+    
+    } 
+    console.log(articleData);
     fetch('/api/v1/articles' + (article.id ? `/${article.id}` : ''), {
       method: "PUT",
       headers: {
@@ -189,6 +226,9 @@
       alert('Đã xảy ra lỗi khi lưu bài viết.');
     });
   }
+
+
+
 </script>
 
 <div class="flex">
@@ -279,38 +319,12 @@
     >
       H3
     </button>
-    <button
-      aria-label="Insert link "
-      onclick={() => {
-        const url = prompt("Enter URL");
-        if (url) {
-          runCommand(() => editor.chain().focus().setLink({ href: url }).run());
-        }
-      }}
-      class="px-1 py-1"
-    >
-      <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961"/>
-</svg>
-</button>
-    <button 
-      aria-label="Insert image"
-      onclick={() => {
-        const url = prompt("Enter image URL");
-        if (url) {
-          runCommand(() => editor.chain().focus().setImage({ src: url }).run())
-        }
-      }}
-      class="px-1 py-1"
-    >
-<svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 16 5-7 6 6.5m6.5 2.5L16 13l-4.286 6M14 10h.01M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"/>
-</svg>
+  
 
-    </button> 
+      <EditorInsertTool {editor} articleId={id} />
   </div>
 
-  <div id="editor" class="h-[calc(100vh-48px)] format mx-auto format-img:aspect-video format-img:object-cover"></div>
+  <div id="editor" class="h-[calc(100vh-48px)] format mx-auto"></div>
 
 </div>
    <div class="flex flex-col w-lg pl-4">
@@ -325,7 +339,7 @@
 
     <div class="">
       
-                       <AutoTextarea value={article.title} className="text-3xl font-bold" placeholder="Tiêu đề bài viết..." onChange={(e)=>{title = e} } />
+        <AutoTextarea value={article.title} className="text-3xl font-bold" placeholder="Tiêu đề bài viết..." onChange={(e)=>{title = e} } />
 
                <AutoTextarea onChange={(e)=>{shortDescription= e} } value={article.shortDescription} className="text-gray-600" placeholder="Mô tả bài ngắn"/>
    

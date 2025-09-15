@@ -11,6 +11,7 @@ export interface ArticleRow {
   status: "draft" | "published" | "archived";
   published_at: Date;
   updated_at: Date | null;
+  category?: { id: number; name: string; slug: string } | [];
   tags?: { id: number; name: string }[];
   created_at: Date;
   content: JSON | null;

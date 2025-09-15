@@ -8,6 +8,10 @@ interface ImportMetaEnv {
   readonly REDIS_HOST: string;
   readonly REDIS_PORT: string;
   readonly NODE_ENV: "development" | "production";
+  readonly MINIO_ENDPOINT: string;
+  readonly MINIO_PORT: string;
+  readonly MINIO_ACCESS_KEY: string;
+  readonly MINIO_SECRET_KEY: string;
 }
 
 interface ImportMeta {

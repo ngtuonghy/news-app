@@ -5,6 +5,9 @@ export const PUT: APIRoute = async ({ params, request }) => {
   const id = params.id;
   const body = await request.json();
 
+  if (!id || !body) {
+    return new Response(JSON.stringify({ message: "Invalid request", status:"error" }), { status: 400 });
+  }
   const articleService = new ArticleManagementService();
   const updated = await articleService.updateArticle(id, body);
   if(!updated) {

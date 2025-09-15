@@ -5,13 +5,14 @@ import { nanoid } from "@/lib/nanoid";
 
 export class ArticleManagementService {
   private repo = new ArticleManagementRepository();
-  async getLatestArticles(
+  async getManagementArticle(
     userId: string,
     limit = 10,
-    categorySlug?: string,
-  ): Promise<Article[]> {
-    const rows = await this.repo.findAllByUser(userId, limit);
-    return rows.map(mapArticleRowToEntity);
+    offset = 0,
+    category?: string,
+  ): Promise<ArticleRow[]> {
+    const rows = await this.repo.findAllByUser(userId, limit, offset, category);
+    return rows
   }
 
   async getArticleByUserId(
