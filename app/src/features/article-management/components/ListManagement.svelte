@@ -16,7 +16,7 @@
     if (loading || !hasMore) return;
     loading = true;
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // await new Promise((resolve) => setTimeout(resolve, 500));
       const res = await fetch(`/api/v1/articles/mine?page=${page}&perPage=${perPage} ${search ? `&query=${encodeURIComponent(search)}` : ""}`);
       const data = await res.json();
       const newArticles = data.data as ArticleRow[];

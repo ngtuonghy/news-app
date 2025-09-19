@@ -1,15 +1,14 @@
 ---
-import NewsCategories from "@/features/news-categories/components/NewsCategories.astro";
-import astroLogo from "../assets/astro.svg";
-import SearchForm from "@/features/search/components/SearchForm.astro";
+import astroLogo from "../../assets/astro.svg";
 const user = Astro.locals.user;
-console.log(user);
+const path = Astro.url.pathname;
+// console.log({user, path});
 ---
 
-<div class="max-w-7xl mx-auto">
+<div class="px-2">
   <div class="flex justify-between pt-2">
     <div class="flex items-center space-x-4 flex-1">
-      <a href="/"
+      <a href={path === "/m" ? "/" : "/m"}
         ><img
           src={astroLogo.src}
           width="115"
@@ -20,15 +19,7 @@ console.log(user);
     </div>
     {user ? ( 
     <div class="flex items-center gap-2">
-      <a href="/m" class={user.role === 'reporter' ? 'block' : 'hidden'}>
-      <button type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center me-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-
-        <svg class="w-3.5 h-3.5 me-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bolt-icon lucide-bolt"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><circle cx="12" cy="12" r="4"/></svg>
-
-
-Quản lý tin
-</button>
-      </a>
+     
     <button id="dropdownInformationButton" data-dropdown-toggle="dropdownInformation" class="" type="button">
       {     user.avatarUrl ? (
           <img class="w-10 h-10 rounded-full" src={user.avatarUrl} alt="Rounded avatar">
@@ -77,9 +68,10 @@ Quản lý tin
     </a>
 )}
   </div>
-  <div class="flex justify-between items-center py-2">
-    <NewsCategories />
-    <SearchForm />
-  </div>
+  <!-- <div class="flex justify-between items-center py-2"> -->
+    <!-- <NewsCategories /> -->
+    <!-- <SearchForm /> -->
+  <!-- </div> -->
   <hr class="border-gray-300" />
 </div>
+

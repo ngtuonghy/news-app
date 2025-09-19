@@ -30,7 +30,7 @@ function flattenCategories(
 const categoriesTree = await categoryService.getCategories();
 const categories = flattenCategories(categoriesTree);
 
-console.log(article)
+// console.log(article)
 if (!article) {
   return new Response("Not found or not authorized", { status: 404 });
 }

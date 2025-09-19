@@ -14,6 +14,7 @@
     "seed:reset": "ts-node --esm ./scripts/seed.ts --reset"
   },
   "dependencies": {
+    "@astrojs/node": "^9.4.3",
     "@astrojs/svelte": "^7.1.1",
     "@floating-ui/react": "^0.27.16",
     "@lucide/astro": "^0.543.0",

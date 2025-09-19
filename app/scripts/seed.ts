@@ -223,7 +223,7 @@ async function seedArticles(
     }
   }
 
-  const ARTICLE_BATCH = 500;
+  const ARTICLE_BATCH = 5000;
   for (let i = 0; i < articleValues.length; i += ARTICLE_BATCH) {
     const chunk = articleValues.slice(i, i + ARTICLE_BATCH);
     const placeholders = chunk.map((_, j) => 

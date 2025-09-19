@@ -38,6 +38,30 @@ services:
         required: false
       - path: .env.dev
         required: false 
+  # app:
+  #   build: ./app
+  #   container_name: news-app
+  #   ports:
+  #     - "4321:4321"
+  #   environment:
+  #     DB_USER: ngtuonghy
+  #     DB_PASSWORD: postgres
+  #     DB_NAME: news_db
+  #     DB_HOST: db    
+  #     DB_PORT: 5432
+  #     REDIS_HOST: redis   
+  #     REDIS_PORT: 6379
+  #     NODE_ENV: production
+  #     MINIO_PORT: 9000
+  #     MINIO_CONSOLE_PORT: 9001
+  #     MINIO_ACCESS_KEY: ngtuonghy
+  #     MINIO_SECRET_KEY: ngtuonghy1234
+  #     MINIO_BUCKET: mybucket
+  #     MINIO_ENDPOINT: minio
+  #   depends_on:
+  #     - db
+  #     - redis
+  #     - s3
 volumes:
   db:
   redis_volume:

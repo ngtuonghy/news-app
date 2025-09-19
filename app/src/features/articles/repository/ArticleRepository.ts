@@ -5,7 +5,7 @@ import type { ArticleRow } from "../mapper";
 export class ArticleRepository {
   // =================== HOME / SECTION ===================
   async findBySection(limit = 10, offset = 0, category?: string): Promise<ArticleRow[]> {
-    console.log("Category filter:", category, "Limit:", limit, "Offset:", offset);
+    // console.log("Category filter:", category, "Limit:", limit, "Offset:", offset);
     const { rows } = await pool.query(
       `SELECT 
         a.id,

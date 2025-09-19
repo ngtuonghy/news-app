@@ -177,7 +177,6 @@ define:vars={{ page, perPage, category }}
     loader.style.display = "flex";
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
       const res = await fetch(
         `/api/v1/articles?page=${currentPage + 1}&perPage=${perPage}${category ? `&category=${category}` : ""}`,
       );

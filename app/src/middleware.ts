@@ -77,7 +77,7 @@ export const navRoute: MiddlewareHandler = async (
 
 
 const limiter = new RateLimiter({
-	tokensPerInterval: 50,
+	tokensPerInterval: 45,
 	interval: "minute",
 	fireImmediately: true,
 });
