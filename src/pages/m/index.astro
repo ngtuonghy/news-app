@@ -1,0 +1,18 @@
+---
+import ReporterLayout from "@/layouts/ReporterLayout.astro";
+import ListManagent from "@/features/article-management/components/ListManagement.svelte";
+const search = Astro.url.searchParams.get("q") || "";
+const page = Number(Astro.url.searchParams.get("page") || 1);
+const perPage = 20;
+console.log({ search, page });
+---
+
+<ReporterLayout>
+  <button
+    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
+    onclick="window.location.href='/m/create'"
+  >
+    Tạo bài viết mới
+  </button>
+  <ListManagent client:load {search} {page}  />
+</ReporterLayout>

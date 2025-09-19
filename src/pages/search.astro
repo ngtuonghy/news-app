@@ -1,0 +1,155 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { ArticleService } from "@/features/articles/services/ArticleService";
+import ArticleCard from "@/features/articles/components/ArticleCard.astro";
+
+const search = Astro.url.searchParams.get("q") || "";
+const page = Number(Astro.url.searchParams.get("page") || 1);
+const perPage = 20;
+
+const service = new ArticleService();
+
+const articles = await service.searchArticles(
+  search,
+  perPage,
+  (page - 1) * perPage,
+);
+const totalCount = await service.countSearchResults(search);
+const totalPages = Math.ceil(totalCount / perPage);
+---
+
+<Layout>
+  <div class="max-w-7xl mx-auto">
+  <h1 class="text-xl font-bold mt-4">
+    Kết quản tìm kiếm "{search}" ({totalCount} kết quả)
+  </h1>
+
+  <div class="flex">
+    <div class="flex-1">
+      <div id="articles-list" class="flex flex-col grid-cols-4 gap-4 mt-4">
+        {
+          articles.map((article) => (
+            <ArticleCard {...article} horizontal={true} />
+          ))
+        }
+      </div>
+
+      <nav aria-label="Pagination" class="hidden">
+        {
+          Array.from({ length: totalPages }, (_, i) => (
+            <a href={`/search?q=${search}&page=${i + 1}`}>Page {i + 1}</a>
+          ))
+        }
+      </nav>
+
+      <div
+        id="loader"
+        role="status"
+        class="text-center py-4 flex justify-center w-full"
+        style="display: none;"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600 flex-1"
+          viewBox="0 0 100 101"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+            fill="currentColor"></path>
+          <path
+            d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+            fill="currentFill"></path>
+        </svg>
+        <span class="sr-only">Loading...</span>
+      </div>
+    </div>
+    <div class="pl-4 py-2 w-80 lg:block hidden">
+      <!--     <form class="max-w-sm mx-auto"> -->
+      <!-- <label for="countries" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select an option</label> -->
+      <!-- <select id="countries" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"> -->
+      <!--   <option selected>Choose a country</option> -->
+      <!--   <option value="US">United States</option> -->
+      <!--   <option value="CA">Canada</option> -->
+      <!--   <option value="FR">France</option> -->
+      <!--   <option value="DE">Germany</option> -->
+    </div>
+  </div>
+      </div>
+
+</Layout>
+
+<script
+  type="module"
+  is:inline
+  define:vars={{ search, page, perPage, totalPages }}
+>
+  function slugify(text) {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+  }
+  let currentPage = page;
+  let isLoading = false;
+  const loader = document.getElementById("loader");
+  const list = document.getElementById("articles-list");
+
+  async function fetchMore() {
+    if (isLoading || currentPage >= totalPages) return;
+    isLoading = true;
+    loader.style.display = "flex";
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(search)}&page=${currentPage + 1}&perPage=${perPage}`,
+      );
+      const data = await res.json();
+
+      data.articles.forEach((article) => {
+        const div = document.createElement("a");
+        div.href = `/${article.categories.map(slugify).join("/")}/${slugify(article.title)}-${article.id}`;
+        div.className =
+          "rounded-lg mb-4 overflow-hidden flex gap-4 items-start";
+        div.innerHTML = `
+    <div class="md:w-1/3 w-36 flex-shrink-0 aspect-video rounded-lg bg-gray-200 overflow-hidden">
+      <img src="${article.thumbnailUrl || "https://placehold.co/600x400/png"}" class="w-full h-full object-cover"/>
+    </div>
+    <div class="flex-1">
+      <h2 class="md:text-xl text-md font-bold">${article.title}</h2>
+      <p class="text-sm md:block hidden">${article.shortDescription}</p>
+      <small class="text-xs text-gray-500 md:block hidden">${new Date(article.publishedAt).toLocaleDateString()} - ${article.author}</small>
+    </div>
+  `;
+        list.appendChild(div);
+      });
+
+      currentPage++;
+      if (currentPage >= totalPages) {
+        loader.textContent = "";
+      } else {
+        loader.style.display = "none";
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      loader.textContent = "Error loading more articles.";
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  window.addEventListener("scroll", () => {
+    if (isLoading || currentPage >= totalPages) return;
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      fetchMore();
+    }
+  });
+</script>

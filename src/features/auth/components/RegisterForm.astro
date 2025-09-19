@@ -1,0 +1,139 @@
+---
+---
+<div class="font-sans text-gray-900 antialiased">
+  <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-[#f8f4f3]">
+    <div>
+      <a href="/">
+        <h2 class="font-bold text-3xl bg-blue-500 text-white px-2 rounded-md">NEWS APP</h2>
+      </a>
+    </div>
+
+    <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
+      <form method="POST">
+        <div class="py-6">
+          <center>
+            <span class="text-2xl font-semibold">Đăng kí</span>
+          </center>
+        </div>
+
+        <div class="mt-2">
+          <label class="block font-medium text-sm text-gray-700" for="fullName">Họ tên</label>
+          <input 
+            type="text"
+            name="fullName"
+            placeholder="Your full name"
+            required
+            class="w-full rounded-md py-2.5 px-4 border text-sm outline-blue-500,"
+          />
+        </div>
+
+        <div class="mt-4">
+          <label class="block font-medium text-sm text-gray-700" for="username">Tài khoản</label>
+          <input 
+            type="text"
+            name="username"
+            placeholder="Choose a username"
+            required
+            class="w-full rounded-md py-2.5 px-4 border text-sm outline-blue-500,"
+          />
+        </div>
+
+        <div class="mt-4">
+          <label class="block font-medium text-sm text-gray-700" for="password">Mật khẩu</label>
+          <input 
+            type="password"
+            name="password"
+            placeholder="Mật khẩu"
+            required
+            class="w-full rounded-md py-2.5 px-4 border text-sm outline-blue-500,"
+          />
+        </div>
+
+        <div class="mt-4">
+          <label class="block font-medium text-sm text-gray-700" for="confirmPassword">Xác nhận mật khẩu</label>
+          <input 
+            type="password"
+            name="confirmPassword"
+            placeholder="Xác nhận mật khẩu"
+            required
+            class="w-full rounded-md py-2.5 px-4 border text-sm outline-blue-500,"
+          />
+        </div>
+
+        <div id="msg" class="text-center text-sm mt-3"></div>
+
+        <div class="flex items-center justify-end mt-6">
+          <button 
+            type="submit"
+            class="ms-4 inline-flex items-center px-4 py-2 bg-blue-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-blue-500, focus:ring-offset-2 transition ease-in-out duration-150"
+          >
+         
+            Đăng kí
+          </button>
+        </div>
+      </form>
+
+      <div>
+        <p class="mt-4 text-sm">Đã có tài khoản? <a href="/login" class="text-blue-500 hover:underline">Đăng nhập </a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.querySelector("form");
+  const msg = document.getElementById("msg");
+  if (!form) throw new Error("Form element not found");
+
+  form.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", () => {
+      if (msg) {
+        msg.textContent = "";
+        msg.className = "text-center text-sm mt-3"; // reset style
+      }
+    });
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    if (data.password !== data.confirmPassword) {
+      if (msg) {
+        msg.innerText = "Mật khẩu không khớp";
+        msg.className = "text-center text-sm mt-3 text-red-500 font-medium";
+      }
+      return;
+    }
+
+    const res = await fetch("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const result = await res.json();
+    console.log(result);
+
+    if (result.success) {
+      if (msg) {
+        msg.innerText = "Đăng kí thành công! Bạn có thể đăng nhập ngay bây giờ.";
+        msg.className = "text-center text-sm mt-3 text-green-600 font-medium";
+      }
+    } else {
+      if (result.code === "USERNAME_TAKEN") {
+        if (msg) {
+          msg.innerText = "Người dùng đã tồn tại";
+          msg.className = "text-center text-sm mt-3 text-red-500 font-medium";
+        }
+      } else {
+        if (msg) {
+          msg.innerText = "Đã có lỗi xảy ra, vui lòng thử lại sau";
+          msg.className = "text-center text-sm mt-3 text-red-500 font-medium";
+        }
+      }
+    }
+  });
+</script>
