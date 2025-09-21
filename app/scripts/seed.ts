@@ -4,9 +4,16 @@ import pkg from "pg";
 import bcrypt from "bcrypt";
 import { nanoid } from "../src/lib/nanoid.ts";
 import { fakeTiptapDoc } from "./fakeTiptapDoc.ts";
+import cliProgress from "cli-progress";
+import { pipeline } from "stream";
+import { promisify } from "util";
+import { Readable } from "stream";
+import copyStreams from "pg-copy-streams";
 
 const { Pool } = pkg;
+const { from: copyFrom } = copyStreams;
 const faker = new Faker({ locale: [vi, en] });
+const asyncPipeline = promisify(pipeline);
 
 const pool = new Pool({
 	user: process.env.DB_USER,
@@ -18,14 +25,12 @@ const pool = new Pool({
 
 const config = {
 	users: 10,
-	maxChildren: 7, // số con mỗi root
 	tags: 10,
-	articles: 10000,
-	minBlocks: 2,
-	maxBlocks: 8,
+	articles: 1_000_000, // số lượng articles
 	maxTagsPerArticle: 5,
 };
 
+// ==================== Helpers ====================
 function slugify(text: string): string {
 	return text
 		.toLowerCase()
@@ -42,9 +47,9 @@ function slugify(text: string): string {
 async function seedUsers(): Promise<string[]> {
 	const passwordHash = await bcrypt.hash("1234", 12);
 	const reporterIds: string[] = [];
+
 	for (let i = 0; i < config.users; i++) {
 		const username = faker.internet.username().toLowerCase();
-		const password_hash = passwordHash;
 		const full_name = faker.person.fullName();
 		const email = faker.internet.email();
 		const role = faker.helpers.arrayElement(["reporter", "reader", "admin"]);
@@ -54,7 +59,7 @@ async function seedUsers(): Promise<string[]> {
 			`INSERT INTO users (username, password_hash, full_name, email, role, avatar_url)
        VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT DO NOTHING RETURNING id, role`,
-			[username, password_hash, full_name, email, role, avatar_url],
+			[username, passwordHash, full_name, email, role, avatar_url],
 		);
 
 		if (rows[0] && rows[0].role === "reporter") reporterIds.push(rows[0].id);
@@ -64,34 +69,11 @@ async function seedUsers(): Promise<string[]> {
 
 // ==================== Seed Categories ====================
 const ROOT_CATEGORIES = [
-	"Thế giới",
-	"Kinh tế",
-	"Giải trí",
-	"Thể thao",
-	"Công nghệ",
-	"Sức khỏe",
-	"Văn hóa",
-	"Giáo dục",
-	"Du lịch",
-	"Pháp luật",
-	"Môi trường",
-	"Xe cộ",
-	"Đời sống",
-	"Ý kiến",
-	"Thời trang",
-	"Ẩm thực",
-	"Nhân vật",
-	"Sự kiện",
-	"Tâm linh",
-	"Quân sự",
-	"Chính trị",
-	"Thời sự",
+	"Thế giới", "Kinh tế", "Giải trí", "Thể thao",
+	"Công nghệ", "Sức khỏe", "Văn hóa", "Giáo dục",
 ];
 
-async function seedNewsCategories(): Promise<{
-	root: number[];
-	children: number[];
-}> {
+async function seedCategories(): Promise<{ root: number[]; children: number[] }> {
 	const rootIds: number[] = [];
 	const childIds: number[] = [];
 
@@ -99,188 +81,149 @@ async function seedNewsCategories(): Promise<{
 		const name = ROOT_CATEGORIES[i];
 		const slug = slugify(name);
 
-		const { rows: existingRoot } = await pool.query(
-			`SELECT id FROM categories WHERE slug = $1`,
-			[slug],
-		);
-		if (existingRoot[0]) {
-			rootIds.push(existingRoot[0].id);
-			continue;
-		}
-
-		const description = faker.lorem.sentence();
-
 		const { rows } = await pool.query(
 			`INSERT INTO categories (name, slug, description, position, is_active, meta_title, meta_description, parent_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name
        RETURNING id`,
-			[name, slug, description, i, true, name, description.slice(0, 160), null],
+			[name, slug, faker.lorem.sentence(), i, true, name, name, null],
 		);
 
 		const rootId = rows[0].id;
 		rootIds.push(rootId);
 
+		// thêm children
 		const childCount = faker.number.int({ min: 4, max: 7 });
 		for (let j = 0; j < childCount; j++) {
-			const childName = faker.lorem.words(2); // tên con ngắn hơn
-			const childSlug = slugify(childName);
+			const cname = faker.lorem.words(2);
+			const cslug = slugify(cname);
 
-			const { rows: existingChild } = await pool.query(
-				`SELECT id FROM categories WHERE slug = $1 AND parent_id = $2`,
-				[childSlug, rootId],
-			);
-			if (existingChild[0]) continue;
-
-			const childDesc = faker.lorem.sentence();
-			const { rows: childRows } = await pool.query(
+			const { rows: cRows } = await pool.query(
 				`INSERT INTO categories (name, slug, description, position, is_active, meta_title, meta_description, parent_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING
-         RETURNING id`,
-				[
-					childName,
-					childSlug,
-					childDesc,
-					j,
-					true,
-					childName,
-					childDesc.slice(0, 160),
-					rootId,
-				],
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT DO NOTHING RETURNING id`,
+				[cname, cslug, faker.lorem.sentence(), j, true, cname, cname, rootId],
 			);
 
-			if (childRows[0]) childIds.push(childRows[0].id);
+			if (cRows[0]) childIds.push(cRows[0].id);
 		}
 	}
-
 	return { root: rootIds, children: childIds };
 }
+
 // ==================== Seed Tags ====================
 async function seedTags(): Promise<number[]> {
 	const tagIds: number[] = [];
 	for (let i = 0; i < config.tags; i++) {
-		const name = faker.lorem.word();
 		const { rows } = await pool.query(
 			`INSERT INTO tags (name) VALUES ($1) ON CONFLICT DO NOTHING RETURNING id`,
-			[name],
+			[faker.lorem.word()],
 		);
 		if (rows[0]) tagIds.push(rows[0].id);
 	}
 	return tagIds;
 }
 
-// ==================== Seed Articles ====================
-async function seedArticles(
-  reporterIds: string[],
-  rootIds: number[],
-  childIds: number[],
-  tagIds: number[],
-): Promise<string[]> {
-  const articleIds: string[] = [];
-  const articleValues: any[] = [];
-  const articleTagValues: any[] = [];
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 2 * 24*60*60*1000);
+// ==================== Seed Articles (BATCH INSERT) ====================
+async function seedArticlesBatch(reporterIds: string[], rootIds: number[], childIds: number[], tagIds: number[]) {
+	const ARTICLE_BATCH = 5000;
+	const total = config.articles;
+	const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+	bar.start(total, 0);
 
-  for (let i = 0; i < config.articles; i++) {
-    if (reporterIds.length === 0) break;
-    const id = nanoid();
-    const author_id = faker.helpers.arrayElement(reporterIds);
-    const created_at = faker.date.between({ from: new Date(now.getTime() - 14*24*60*60*1000), to:new Date(now.getTime() - 24*60*60*1000)  });
-    const title = faker.lorem.sentence();
-    const short_description = faker.lorem.paragraph();
-    const thumbnail_url = faker.image.url();
-    const status = faker.helpers.arrayElement(["draft","published"]);
-    const content = fakeTiptapDoc();
-    let published_at: Date | null = null;
-    if (status === "published") {
-  if (created_at < yesterday) {
-    published_at = faker.date.between({ from: created_at, to:yesterday  });
-  } else {
-    published_at = created_at;
-  }
-}
+	for (let i = 0; i < total; i += ARTICLE_BATCH) {
+		const chunk = [];
+		for (let j = 0; j < ARTICLE_BATCH && i + j < total; j++) {
+			const id = nanoid();
+			const author_id = faker.helpers.arrayElement(reporterIds);
+			const created_at = faker.date.recent({ days: 30 });
+			const title = faker.lorem.sentence();
+			const short_description = faker.lorem.paragraph();
+			const status = faker.helpers.arrayElement(["draft", "published"]);
+			const content = fakeTiptapDoc();
+			const category_id = (faker.datatype.boolean() && childIds.length > 0)
+				? faker.helpers.arrayElement(childIds)
+				: faker.helpers.arrayElement(rootIds);
 
+			chunk.push([
+				id, author_id, category_id, title, short_description,
+				created_at.toISOString(), faker.image.url(), status, content,
+				status === "published" ? created_at.toISOString() : null
+			]);
+		}
 
+		const placeholders = chunk.map((_, j) =>
+			`($${j * 10 + 1},$${j * 10 + 2},$${j * 10 + 3},$${j * 10 + 4},$${j * 10 + 5},$${j * 10 + 6},$${j * 10 + 7},$${j * 10 + 8},$${j * 10 + 9},$${j * 10 + 10})`
+		).join(",");
 
-    const category_id = (faker.datatype.boolean() && childIds.length > 0)
-      ? faker.helpers.arrayElement(childIds)
-      : faker.helpers.arrayElement(rootIds);
+		await pool.query("BEGIN");
+		try {
+			await pool.query(
+				`INSERT INTO articles (id, author_id, category_id, title, short_description, created_at, thumbnail_url, status, content, published_at)
+         VALUES ${placeholders}`,
+				chunk.flat()
+			);
+			await pool.query("COMMIT");
+		} catch (err) {
+			await pool.query("ROLLBACK");
+			throw err;
+		}
 
-    articleValues.push([
-      id, author_id, category_id, title, short_description,
-      created_at.toISOString(), thumbnail_url, status, content,
-      published_at ? published_at.toISOString() : null
-    ]);
-
-    articleIds.push(id);
-
-    // Random tags
-    if (tagIds.length > 0) {
-      const tags = faker.helpers.arrayElements(tagIds, faker.number.int({ min:1, max: config.maxTagsPerArticle }));
-      for (const tagId of tags) {
-        articleTagValues.push([id, tagId]);
-      }
-    }
-  }
-
-  const ARTICLE_BATCH = 5000;
-  for (let i = 0; i < articleValues.length; i += ARTICLE_BATCH) {
-    const chunk = articleValues.slice(i, i + ARTICLE_BATCH);
-    const placeholders = chunk.map((_, j) => 
-      `($${j*10+1},$${j*10+2},$${j*10+3},$${j*10+4},$${j*10+5},$${j*10+6},$${j*10+7},$${j*10+8},$${j*10+9},$${j*10+10})`
-    ).join(",");
-    await pool.query(
-      `INSERT INTO articles (id, author_id, category_id, title, short_description, created_at, thumbnail_url, status, content, published_at)
-       VALUES ${placeholders}`,
-      chunk.flat()
-    );
-  }
-
-  const TAG_BATCH = 2000;
-  for (let i = 0; i < articleTagValues.length; i += TAG_BATCH) {
-    const chunk = articleTagValues.slice(i, i + TAG_BATCH);
-    const placeholders = chunk.map((_, j) => `($${j*2+1},$${j*2+2})`).join(",");
-    await pool.query(
-      `INSERT INTO article_tags (article_id, tag_id) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
-      chunk.flat()
-    );
-  }
-
-  return articleIds;
-}
-
-// ==================== Seed Article Positions ====================
-async function seedArticlePositions(articleIds: string[]) {
-	const homepageArticles = faker.helpers.arrayElements(articleIds, 7);
-	for (let i = 0; i < homepageArticles.length; i++) {
-		await pool.query(
-			`INSERT INTO article_positions (article_id, section, category_id, sort_order)
-       VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-			[homepageArticles[i], "home_page", null, i + 1],
-		);
+		bar.update(Math.min(i + ARTICLE_BATCH, total));
 	}
 
-	const categoryPageArticles = faker.helpers.arrayElements(articleIds, 20);
-	let sort = 1;
-	for (const articleId of categoryPageArticles) {
-		const { rows } = await pool.query(
-			`SELECT category_id FROM articles WHERE id=$1`,
-			[articleId],
-		);
-		const category_id = rows[0]?.category_id;
-		if (!category_id) continue;
+	bar.stop();
+	console.log("✅ Seed articles (batch insert) completed!");
+}
 
-		await pool.query(
-			`INSERT INTO article_positions (article_id, section, category_id, sort_order)
-       VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-			[articleId, "category_page", category_id, sort++],
-		);
+// ==================== Seed Articles (COPY STREAM – SIÊU NHANH) ====================
+async function seedArticlesCopy(reporterIds: string[], rootIds: number[], childIds: number[]) {
+	const client = await pool.connect();
+	try {
+		const stream = client.query(copyFrom(
+			`COPY articles (id, author_id, category_id, title, short_description, created_at, thumbnail_url, status, content, published_at)
+       FROM STDIN WITH CSV`
+		));
+
+		const total = config.articles;
+		const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+		bar.start(total, 0);
+
+		const rs = new Readable({
+			read() {
+				for (let i = 0; i < total; i++) {
+					const id = nanoid();
+					const author_id = faker.helpers.arrayElement(reporterIds);
+					const created_at = faker.date.recent({ days: 30 });
+					const title = faker.lorem.sentence().replace(/,/g, " ");
+					const short_description = faker.lorem.paragraph().replace(/,/g, " ");
+					const status = faker.helpers.arrayElement(["draft", "published"]);
+					const content = JSON.stringify(fakeTiptapDoc()).replace(/\n/g, " ").replace(/\r/g, " ");
+					const category_id = (faker.datatype.boolean() && childIds.length > 0)
+						? faker.helpers.arrayElement(childIds)
+						: faker.helpers.arrayElement(rootIds);
+					const published_at = status === "published" ? created_at.toISOString() : "";
+
+					this.push(`${id},${author_id},${category_id},${title},${short_description},${created_at.toISOString()},${faker.image.url()},${status},${content},${published_at}\n`);
+
+					if (i % 5000 === 0) bar.update(i);
+				}
+				this.push(null);
+			}
+		});
+
+		await asyncPipeline(rs, stream);
+		bar.update(total);
+		bar.stop();
+		console.log("Seed articles (COPY) completed!");
+	} finally {
+		client.release();
 	}
 }
 
 // ==================== Reset Database ====================
 async function resetDb() {
-	console.log("♻  Reset database...");
+	console.log("Reset database...");
 	await pool.query(`
 		TRUNCATE TABLE
 			article_tags,
@@ -291,27 +234,28 @@ async function resetDb() {
 			users
 		RESTART IDENTITY CASCADE;
 	`);
-	console.log("✅ Database reset completed!");
+	console.log("Reset completed!");
 }
 
-// ==================== Main Seed ====================
-
+// ==================== Main ====================
 async function seed() {
-	const reset = process.argv.includes("--reset"); // chạy: ts-node seed.ts --reset
-	if (reset) {
+	if (process.argv.includes("--reset")) {
 		await resetDb();
 	}
-	console.log("🌱 Seeding database...");
+
 	const reporterIds = await seedUsers();
-	const { root: rootIds, children: childIds } = await seedNewsCategories();
+	const { root, children } = await seedCategories();
 	const tagIds = await seedTags();
-	const articleIds = await seedArticles(reporterIds, rootIds, childIds, tagIds);
-	await seedArticlePositions(articleIds);
-	console.log("✅ Seeding completed!");
+
+	// Chọn 1 trong 2 cách:
+	await seedArticlesBatch(reporterIds, root, children, tagIds);
+	// await seedArticlesCopy(reporterIds, root, children); // copy mode
+
 	await pool.end();
 }
 
 seed().catch((err) => {
-	console.error("❌ Seeding error:", err);
+	console.error("Seeding error:", err);
 	pool.end();
 });
+

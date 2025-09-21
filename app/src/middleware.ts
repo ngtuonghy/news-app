@@ -125,7 +125,7 @@ export const rateLimit: MiddlewareHandler = async ({ request }, next) => {
 	return next();
 };
 
-export const onRequest = sequence(rateLimit, auth, navRoute, protectedRoute);
+export const onRequest = sequence(auth, navRoute, protectedRoute);
 
 // const WINDOW = 60_000; // 1 phút
 // const MAX_REQ = 5;    // mỗi IP tối đa 30 req / phút

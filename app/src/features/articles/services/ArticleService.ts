@@ -18,7 +18,6 @@ export class ArticleService {
 		}
 
 		const rows = await this.repo.findBySection(limit, offset, category);
-
 		const result = rows.map(mapArticleRowToEntity);
 
 		await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
@@ -30,19 +29,16 @@ export class ArticleService {
 		slug: string,
 		limit = 10,
 	): Promise<Article[]> {
-    const cacheKey = `articles:by-category:${slug}:${limit}`;
+		const cacheKey = `articles:by-category:${slug}:${limit}`;
+		const cached = await redis.get(cacheKey);
+		if (cached) {
+			return JSON.parse(cached) as Article[];
+		}
+		const rows = await this.repo.findByCategorySlug(slug, limit);
+		const result = rows.map(mapArticleRowToEntity);
+		await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached) as Article[];
-    }
-    const rows = await this.repo.findByCategorySlug(slug, limit);
-
-    const result = rows.map(mapArticleRowToEntity);
-    await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
-
-    return result;
-   
+		return result;
 	}
 
 	async getArticlesTopCategoriesWithArticles(
@@ -59,51 +55,60 @@ export class ArticleService {
 				articles: Article[];
 			}[];
 		}
-		const rows = await this.repo.findTopCategoriesWithArticles(limitCategory);
 
-		const result: { slug: string; name: string; articles: Article[] }[] = [];
+		const rows = await this.repo.findTopCategoriesWithArticles(
+			limitCategory,
+			limitArticles,
+		);
+
+		const map = new Map<
+			string,
+			{ slug: string; name: string; articles: Article[] }
+		>();
 
 		for (const row of rows) {
-			let category = result.find((c) => c.slug === row.category_slug);
-			if (!category) {
-				category = {
+			if (!map.has(row.category_slug)) {
+				map.set(row.category_slug, {
 					slug: row.category_slug,
 					name: row.category_name,
 					articles: [],
-				};
-				result.push(category);
-			}
-
-			if (category.articles.length < limitArticles) {
-				category.articles.push({
-					id: row.article_id,
-					title: row.title,
-					shortDescription: row.short_description,
-					thumbnailUrl: row.thumbnail_url,
-					publishedAt: row.published_at,
-					author: row.author_name,
-					categories: row.article_categories,
 				});
 			}
+
+			const category = map.get(row.category_slug)!;
+
+			category.articles.push({
+				id: row.article_id,
+				title: row.title,
+				shortDescription: row.short_description,
+				thumbnailUrl: row.thumbnail_url,
+				publishedAt: row.published_at,
+				author: row.author_name,
+				createdAt: row.created_at,
+				categories: row.article_categories,
+			});
 		}
+
+		const result = Array.from(map.values());
+
 		await redis.set(cacheKey, JSON.stringify(result), "EX", 120);
+
 		return result;
 	}
 
 	async getArticleById(id: string): Promise<Article | null> {
-    const cacheKey = `articles:by-id:${id}`;
+		const cacheKey = `articles:by-id:${id}`;
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached) as Article;
-    }
+		const cached = await redis.get(cacheKey);
+		if (cached) {
+			return JSON.parse(cached) as Article;
+		}
 		const row = await this.repo.getById(id);
 		if (!row) return null;
-		const result =mapArticleRowToEntity(row);
-    await redis.set(cacheKey, JSON.stringify(result), "EX", 60 * 5);
-    return result;
+		const result = mapArticleRowToEntity(row);
+		await redis.set(cacheKey, JSON.stringify(result), "EX", 60 * 5);
+		return result;
 	}
-
 	async searchArticles(
 		query: string,
 		limit = 10,
@@ -119,20 +124,18 @@ export class ArticleService {
 
 		const result = rows.map(mapArticleRowToEntity);
 		await redis.set(cacheKey, JSON.stringify(result), "EX", 60);
-
 		return result;
 	}
 
 	async countSearchResults(query: string): Promise<number> {
-    const cacheKey = `articles:search:count:${query}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return Number(cached);
-    }
-    const count = await this.repo.countSearchResults(query);
-    await redis.set(cacheKey, String(count), "EX", 60);
-    return count;
-
+		const cacheKey = `articles:search:count:${query}`;
+		const cached = await redis.get(cacheKey);
+		if (cached) {
+			return Number(cached);
+		}
+		const count = await this.repo.countSearchResults(query);
+		await redis.set(cacheKey, String(count), "EX", 60);
+		return count;
 	}
 
 	async getNewArticle(limit = 5): Promise<Article[]> {

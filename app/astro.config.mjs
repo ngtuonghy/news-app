@@ -7,6 +7,8 @@ import svelte from "@astrojs/svelte";
 
 import node from "@astrojs/node";
 
+import compressor from "astro-compressor";
+
 // https://astro.build/config
 export default defineConfig({
   output: "server",
@@ -15,7 +17,9 @@ export default defineConfig({
     plugins: [tailwindcss()],
   },
 
-  integrations: [svelte()],
+  integrations: [svelte(), compressor(
+   
+  )],
 
   adapter: node({
     mode: "standalone",

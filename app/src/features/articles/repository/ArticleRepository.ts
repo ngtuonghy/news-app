@@ -171,8 +171,8 @@ async findByCategorySlug(slug: string, limit = 10): Promise<ArticleRow[]> {
   }
 
   async findTopCategoriesWithArticles(limitCategory = 5, limitArticles = 5) {
-    const { rows } = await pool.query(
-      `
+  const { rows } = await pool.query(
+    `
     WITH RECURSIVE category_tree AS (
       SELECT id, name, slug, parent_id
       FROM categories
@@ -183,11 +183,11 @@ async findByCategorySlug(slug: string, limit = 10): Promise<ArticleRow[]> {
       JOIN category_tree ct ON c.parent_id = ct.id
     ),
     category_counts AS (
-      SELECT ct_root.id AS root_id, COUNT(a.id) AS article_count
-      FROM category_tree ct_root
-      LEFT JOIN categories c ON c.id = ct_root.id OR c.parent_id = ct_root.id
-      LEFT JOIN articles a ON a.category_id = c.id AND a.is_deleted = false
-      GROUP BY ct_root.id
+      SELECT ct.id AS root_id, COUNT(a.id) AS article_count
+      FROM category_tree ct
+      LEFT JOIN categories c ON c.id = ct.id OR c.parent_id = ct.id
+      LEFT JOIN articles a ON a.category_id = c.id AND a.is_deleted = false AND a.status = 'published'
+      GROUP BY ct.id
     ),
     top_categories AS (
       SELECT c.id, c.name, c.slug
@@ -195,6 +195,18 @@ async findByCategorySlug(slug: string, limit = 10): Promise<ArticleRow[]> {
       JOIN category_counts cc ON cc.root_id = c.id
       ORDER BY cc.article_count DESC
       LIMIT $1
+    ),
+    ranked_articles AS (
+      SELECT 
+        a.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY 
+            CASE WHEN c.parent_id IS NULL THEN c.id ELSE c.parent_id END
+          ORDER BY a.published_at DESC
+        ) AS rn
+      FROM articles a
+      JOIN categories c ON a.category_id = c.id
+      WHERE a.is_deleted = false AND a.status = 'published'
     )
     SELECT 
       c.slug AS category_slug,
@@ -207,22 +219,22 @@ async findByCategorySlug(slug: string, limit = 10): Promise<ArticleRow[]> {
       u.username AS author_name,
       ARRAY_REMOVE(ARRAY[parent.name, cat.name], NULL) AS article_categories
     FROM top_categories c
-    JOIN articles a 
-      ON a.is_deleted = false 
+    JOIN ranked_articles a 
+      ON a.rn <= $2
       AND (a.category_id = c.id OR a.category_id IN (SELECT id FROM categories WHERE parent_id = c.id))
-      AND a.status = 'published'
     JOIN users u ON u.id = a.author_id
     LEFT JOIN categories cat ON cat.id = a.category_id
     LEFT JOIN categories parent ON parent.id = cat.parent_id
     ORDER BY c.id, a.published_at DESC
     `,
-      [limitCategory],
-    );
+    [limitCategory, limitArticles]
+  );
 
-    return rows;
-  }
+  return rows;
+}
 
-  async getNewArticles(limit = 5): Promise<ArticleRow[]> {
+
+   async getNewArticles(limit = 5): Promise<ArticleRow[]> {
     const { rows } = await pool.query(
       `
       SELECT 

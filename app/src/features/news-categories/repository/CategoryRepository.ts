@@ -15,7 +15,6 @@ export class CategoryRepository {
     return rows;
   }
   async findBySlug(slug: string): Promise<CategoryRow | null> {
-    console.log("Fetching category with slug:", slug);
     const { rows } = await pool.query(
       `
       SELECT id, name, description, slug

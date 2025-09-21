@@ -107,20 +107,16 @@ CREATE TABLE article_tags (
 -- ==================== 2-level category enforcement ====================
 DROP TRIGGER IF EXISTS trg_enforce_two_level_category ON categories;
 DROP FUNCTION IF EXISTS enforce_two_level_category();
-
 CREATE OR REPLACE FUNCTION enforce_two_level_category()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Nếu NEW có parent_id, tức là muốn làm con
     IF NEW.parent_id IS NOT NULL THEN
-        -- (1) Không cho phép 3 tầng: cha của nó không được là con
         IF EXISTS (
             SELECT 1 FROM categories WHERE id = NEW.parent_id AND parent_id IS NOT NULL
         ) THEN
             RAISE EXCEPTION '❌ Category "%" không hợp lệ: không được tạo category 3 tầng (chỉ root và con)', NEW.name;
         END IF;
 
-        -- (2) Nếu category này đang có con rồi thì không thể biến nó thành con của ai
         IF EXISTS (
             SELECT 1 FROM categories WHERE parent_id = NEW.id
         ) THEN
@@ -138,14 +134,26 @@ FOR EACH ROW
 EXECUTE FUNCTION enforce_two_level_category();
 
 -- ==================== Indexes ====================
--- Full-text index cho articles
 CREATE INDEX idx_articles_tsv ON articles USING GIN(tsv);
 
--- LIKE/ILIKE nhanh cho categories/tags
 CREATE INDEX idx_categories_name_trgm ON categories USING GIN (name gin_trgm_ops);
 CREATE INDEX idx_tags_name_trgm ON tags USING GIN (name gin_trgm_ops);
 
--- Index hỗ trợ article_positions
 CREATE UNIQUE INDEX idx_homepage_sort ON article_positions(sort_order) WHERE section = 'home_page';
 CREATE UNIQUE INDEX idx_categorypage_sort ON article_positions(category_id, sort_order) WHERE section = 'category_page';
+
+CREATE INDEX idx_articles_home_cover
+  ON articles (published_at DESC)
+  INCLUDE (id, title, short_description, thumbnail_url)
+  WHERE status = 'published' AND is_deleted = FALSE;
+
+CREATE INDEX idx_articles_category_cover
+  ON articles (category_id, published_at DESC)
+  INCLUDE (id, title, short_description, thumbnail_url)
+  WHERE status = 'published' AND is_deleted = FALSE;
+
+CREATE INDEX idx_categories_parent_id ON categories (parent_id);
+
+CREATE INDEX idx_article_tags_article_id ON article_tags (article_id);
+CREATE INDEX idx_article_tags_tag_id ON article_tags (tag_id);
 
