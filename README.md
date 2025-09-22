@@ -42,7 +42,7 @@ npm run dev
 Init seed data:
 ```bash
 npm run seed
-# or npm run seed:reset to reset data
+npm run seed:reset  # to reset data
 ```
 
 Start the dev server:
