@@ -26,7 +26,7 @@ const pool = new Pool({
 const config = {
 	users: 10,
 	tags: 10,
-	articles: 1_000_000, // số lượng articles
+	articles: 2_000_000, // số lượng articles
 	maxTagsPerArticle: 5,
 };
 
@@ -173,52 +173,7 @@ async function seedArticlesBatch(reporterIds: string[], rootIds: number[], child
 	}
 
 	bar.stop();
-	console.log("✅ Seed articles (batch insert) completed!");
-}
-
-// ==================== Seed Articles (COPY STREAM – SIÊU NHANH) ====================
-async function seedArticlesCopy(reporterIds: string[], rootIds: number[], childIds: number[]) {
-	const client = await pool.connect();
-	try {
-		const stream = client.query(copyFrom(
-			`COPY articles (id, author_id, category_id, title, short_description, created_at, thumbnail_url, status, content, published_at)
-       FROM STDIN WITH CSV`
-		));
-
-		const total = config.articles;
-		const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-		bar.start(total, 0);
-
-		const rs = new Readable({
-			read() {
-				for (let i = 0; i < total; i++) {
-					const id = nanoid();
-					const author_id = faker.helpers.arrayElement(reporterIds);
-					const created_at = faker.date.recent({ days: 30 });
-					const title = faker.lorem.sentence().replace(/,/g, " ");
-					const short_description = faker.lorem.paragraph().replace(/,/g, " ");
-					const status = faker.helpers.arrayElement(["draft", "published"]);
-					const content = JSON.stringify(fakeTiptapDoc()).replace(/\n/g, " ").replace(/\r/g, " ");
-					const category_id = (faker.datatype.boolean() && childIds.length > 0)
-						? faker.helpers.arrayElement(childIds)
-						: faker.helpers.arrayElement(rootIds);
-					const published_at = status === "published" ? created_at.toISOString() : "";
-
-					this.push(`${id},${author_id},${category_id},${title},${short_description},${created_at.toISOString()},${faker.image.url()},${status},${content},${published_at}\n`);
-
-					if (i % 5000 === 0) bar.update(i);
-				}
-				this.push(null);
-			}
-		});
-
-		await asyncPipeline(rs, stream);
-		bar.update(total);
-		bar.stop();
-		console.log("Seed articles (COPY) completed!");
-	} finally {
-		client.release();
-	}
+	console.log("Seed articles (batch insert) completed!");
 }
 
 // ==================== Reset Database ====================
@@ -247,9 +202,7 @@ async function seed() {
 	const { root, children } = await seedCategories();
 	const tagIds = await seedTags();
 
-	// Chọn 1 trong 2 cách:
 	await seedArticlesBatch(reporterIds, root, children, tagIds);
-	// await seedArticlesCopy(reporterIds, root, children); // copy mode
 
 	await pool.end();
 }

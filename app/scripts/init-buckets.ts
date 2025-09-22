@@ -60,7 +60,6 @@ async function ensureBucketExists(bucketName: string) {
 				`Bucket "${bucketName}" created and policy set successfully.`,
 			);
 		} else {
-			// logger.info(`✅ Bucket "${bucketName}" exists.`);
 		}
 	} catch (error) {
 		console.error(`Error checking or creating bucket "${bucketName}":`, error);
@@ -74,6 +73,7 @@ export async function initBuckets() {
 	for (const bucket of buckets) {
 		await ensureBucketExists(bucket);
 	}
+
 }
 
 initBuckets();

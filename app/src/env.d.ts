@@ -12,6 +12,12 @@ interface ImportMetaEnv {
   readonly MINIO_PORT: string;
   readonly MINIO_ACCESS_KEY: string;
   readonly MINIO_SECRET_KEY: string;
+  readonly MINIO_BUCKET: string;
+  readonly RABBITMQ_DEFAULT_USER: string;
+  readonly RABBITMQ_DEFAULT_PASS: string;
+  readonly RABBITMQ_HOST: string;
+  readonly RABBITMQ_PORT: string;
+  readonly RABBITMQ_QUEUE: string;
 }
 
 interface ImportMeta {

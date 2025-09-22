@@ -11,7 +11,7 @@ services:
       - '6543:5432'
     volumes: 
       - db:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/create_tables.sql
   redis:
     image: redis:8.2.1-alpine
     container_name: redis-news-app
@@ -38,32 +38,22 @@ services:
         required: false
       - path: .env.dev
         required: false 
-  # app:
-  #   build: ./app
-  #   container_name: news-app
+
+  # rabbitmq:
+  #   image: rabbitmq:4-management-alpine
+  #   container_name: rabbitmq
   #   ports:
-  #     - "4321:4321"
+  #     - '5672:5672'
+  #     - '15672:15672'
   #   environment:
-  #     DB_USER: ngtuonghy
-  #     DB_PASSWORD: postgres
-  #     DB_NAME: news_db
-  #     DB_HOST: db    
-  #     DB_PORT: 5432
-  #     REDIS_HOST: redis   
-  #     REDIS_PORT: 6379
-  #     NODE_ENV: production
-  #     MINIO_PORT: 9000
-  #     MINIO_CONSOLE_PORT: 9001
-  #     MINIO_ACCESS_KEY: ngtuonghy
-  #     MINIO_SECRET_KEY: ngtuonghy1234
-  #     MINIO_BUCKET: mybucket
-  #     MINIO_ENDPOINT: minio
-  #   depends_on:
-  #     - db
-  #     - redis
-  #     - s3
+  #     - RABBITMQ_DEFAULT_USER=ngtuonghy
+  #     - RABBITMQ_DEFAULT_PASS=ngtuonghy1234
+  #   volumes:
+  #     - rabbitmq_data:/var/lib/rabbitmq
+
 volumes:
   db:
   redis_volume:
   minio_volume:
+  rabbitmq_data:
 

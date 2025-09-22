@@ -3,22 +3,39 @@ import { sleep } from "k6";
 import { Trend, Rate } from "k6/metrics";
 
 // Custom metrics
-export let reqTrend = new Trend("request_duration_trend"); // lưu thời gian xử lý
-export let reqFailed = new Rate("request_failed_rate");    // lưu tỷ lệ request thất bại
-
+export let reqTrend = new Trend("request_duration_trend");
+export let reqFailed = new Rate("request_failed_rate");   
 export const options = {
   scenarios: {
     stress_test: {
       executor: "ramping-vus",
       startVUs: 0,
       stages: [
-        { duration: "2m", target: 100 },   // từ 0 → 100 VUs
-        { duration: "2m", target: 200 },   // 100 → 200 VUs
-        { duration: "2m", target: 400 },   // 200 → 400 VUs
-        { duration: "2m", target: 800 },   // 400 → 800 VUs
-        { duration: "2m", target: 0 },     // hạ dần về 0
+        { duration: "20s", target: 100 },  
+        { duration: "20s", target: 200 },  
+        { duration: "20s", target: 400 },   
+        { duration: "20s", target: 800 }, 
+        { duration: "20s", target: 1000 },  
+        { duration: "20s", target: 1200 },  
+        { duration: "20s", target: 1400 },  
+        { duration: "20s", target: 1600 },  
+        { duration: "20s", target: 1800 },  
+        { duration: "20s", target: 2000 },
+        { duration: "20s", target: 2200 },
+        { duration: "20s", target: 2400 },
+        { duration: "20s", target: 2600 },
+        { duration: "20s", target: 2800 },
+        { duration: "20s", target: 3000 }, 
+        { duration: "20s", target: 3200 },
+        { duration: "20s", target: 3400 },
+        { duration: "20s", target: 3600 },
+        { duration: "20s", target: 3800 },
+        { duration: "20s", target: 4000 },
+        { duration: "20s", target: 0 },
+
+        
       ],
-      gracefulRampDown: "30s",
+      gracefulRampDown: "10s",
     },
   },
   thresholds: {
@@ -31,10 +48,9 @@ export default function () {
   let res = http.get("http://localhost:4321/");
 
   reqTrend.add(res.timings.duration);
-
   reqFailed.add(res.status >= 400);
 
-  sleep(0.1);
+  sleep(0.05);
 }
 
 

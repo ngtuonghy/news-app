@@ -7,7 +7,7 @@
 ├── public
 │   └── favicon.svg
 ├── scripts
-├── src
+── src
 │   ├── actions
 │   ├── assets
 │   ├── astro.d.ts

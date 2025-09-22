@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    container_name: news-app-dev
+    environment:
+      NODE_ENV: development
+      DB_USER: ngtuonghy
+      DB_PASSWORD: postgres
+      DB_NAME: news_db
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_PORT: 9000
+      MINIO_CONSOLE_PORT: 9001
+      MINIO_ACCESS_KEY: ngtuonghy
+      MINIO_SECRET_KEY: ngtuonghy1234
+      MINIO_BUCKET: mybucket
+      MINIO_ENDPOINT: s3
+    volumes:
+      - ./app:/app  # mount code để live reload
+    ports:
+      - "4321:4321"
+    depends_on:
+      - db
+      - redis
+      - s3
+    command: npm run dev:host
+

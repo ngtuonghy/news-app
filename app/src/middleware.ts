@@ -77,7 +77,7 @@ export const navRoute: MiddlewareHandler = async (
 
 
 const limiter = new RateLimiter({
-	tokensPerInterval: 45,
+	tokensPerInterval: 10,
 	interval: "minute",
 	fireImmediately: true,
 });
@@ -125,7 +125,7 @@ export const rateLimit: MiddlewareHandler = async ({ request }, next) => {
 	return next();
 };
 
-export const onRequest = sequence(auth, navRoute, protectedRoute);
+export const onRequest = sequence(rateLimit ,auth, navRoute, protectedRoute);
 
 // const WINDOW = 60_000; // 1 phút
 // const MAX_REQ = 5;    // mỗi IP tối đa 30 req / phút
